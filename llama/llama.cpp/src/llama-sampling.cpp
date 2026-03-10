@@ -307,6 +307,15 @@ static void llama_sampler_softmax_impl(llama_token_data_array * cur_p, bool do_s
         cum_sum += p;
     }
 
+    // safety fallback: if logits are all NaN/inf, fall back to uniform distribution
+    if (!std::isfinite(cum_sum) || cum_sum <= 0.0f) {
+        const float uniform_p = 1.0f / cur_p->size;
+        for (size_t i = 0; i < cur_p->size; ++i) {
+            cur_p->data[i].p = uniform_p;
+        }
+        return;
+    }
+
     for (size_t i = 0; i < cur_p->size; ++i) {
         cur_p->data[i].p /= cum_sum;
     }
@@ -629,6 +638,16 @@ static void llama_sampler_dist_apply(struct llama_sampler * smpl, llama_token_da
         float p = expf(cur_p->data[i].logit - max_l);
         cur_p->data[i].p = p;
         sum_cum += p;
+    }
+
+    // safety fallback: if logits are all NaN/inf, fall back to uniform distribution
+    if (!std::isfinite(sum_cum) || sum_cum <= 0.0) {
+        const float uniform_p = 1.0f / cur_p->size;
+        for (size_t i = 0; i < cur_p->size; ++i) {
+            cur_p->data[i].p = uniform_p;
+        }
+        cur_p->selected = 0;
+        return;
     }
 
 #if 1

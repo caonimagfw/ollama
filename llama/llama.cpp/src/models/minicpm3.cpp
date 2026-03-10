@@ -16,9 +16,11 @@ llm_build_minicpm3::llm_build_minicpm3(const llama_model & model, const llm_grap
 
     inpL = build_inp_embd(model.tok_embd);
 
-    // scale the input embeddings
-    inpL = ggml_scale(ctx0, inpL, scale_embd);
-    cb(inpL, "inp_scaled", -1);
+    // do not scale raw embeddings input (i.e. encoded image embeddings)
+    if (ubatch.token) {
+        inpL = ggml_scale(ctx0, inpL, scale_embd);
+        cb(inpL, "inp_scaled", -1);
+    }
 
     // inp_pos - contains the positions
     ggml_tensor * inp_pos = build_inp_pos();
